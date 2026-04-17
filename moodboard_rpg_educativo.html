@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Mood Board RPG Educativo</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        background: #1e1e1e;
+        color: white;
+    }
+
+    header {
+        background: #333;
+        padding: 10px;
+        display: flex;
+        gap: 10px;
+    }
+
+    button {
+        padding: 8px 12px;
+        border: none;
+        cursor: pointer;
+        border-radius: 5px;
+    }
+
+    #board {
+        display: flex;
+        flex-wrap: wrap;
+        padding: 10px;
+        gap: 10px;
+    }
+
+    .card {
+        background: #2a2a2a;
+        border-radius: 10px;
+        padding: 10px;
+        width: 300px;
+        min-height: 200px;
+        cursor: move;
+    }
+
+    .card h3 {
+        margin-top: 0;
+    }
+
+    textarea, input {
+        width: 100%;
+        margin-top: 5px;
+        background: #111;
+        color: white;
+        border: 1px solid #444;
+        border-radius: 5px;
+    }
+
+    .images {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-top: 5px;
+    }
+
+    .images img {
+        width: 60px;
+        height: 60px;
+        object-fit: cover;
+        border-radius: 5px;
+    }
+</style>
+</head>
+<body>
+
+<header>
+    <button onclick="addCard()">➕ Nueva sección</button>
+    <button onclick="saveBoard()">💾 Guardar</button>
+    <button onclick="loadBoard()">📂 Cargar</button>
+    <button onclick="exportImage()">📸 Exportar</button>
+    <input type="color" onchange="changeBG(this.value)">
+</header>
+
+<div id="board"></div>
+
+<script>
+let board = document.getElementById("board");
+
+function addCard(title = "Nueva sección", content = "") {
+    let card = document.createElement("div");
+    card.className = "card";
+    card.draggable = true;
+
+    card.innerHTML = `
+        <h3 contenteditable="true">${title}</h3>
+        <textarea placeholder="Escribe ideas...">${content}</textarea>
+        <input type="file" accept="image/*" onchange="addImage(event, this)">
+        <div class="images"></div>
+    `;
+
+    addDragEvents(card);
+    board.appendChild(card);
+}
+
+function addImage(event, input) {
+    let container = input.nextElementSibling;
+    let file = event.target.files[0];
+    let reader = new FileReader();
+
+    reader.onload = function(e) {
+        let img = document.createElement("img");
+        img.src = e.target.result;
+        container.appendChild(img);
+    };
+
+    reader.readAsDataURL(file);
+}
+
+function saveBoard() {
+    let data = [];
+    document.querySelectorAll(".card").forEach(card => {
+        data.push({
+            title: card.querySelector("h3").innerText,
+            text: card.querySelector("textarea").value,
+            images: Array.from(card.querySelectorAll("img")).map(img => img.src)
+        });
+    });
+
+    let blob = new Blob([JSON.stringify(data)], {type: "application/json"});
+    let a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "moodboard.json";
+    a.click();
+}
+
+function loadBoard() {
+    let input = document.createElement("input");
+    input.type = "file";
+
+    input.onchange = e => {
+        let file = e.target.files[0];
+        let reader = new FileReader();
+
+        reader.onload = function(event) {
+            let data = JSON.parse(event.target.result);
+            board.innerHTML = "";
+
+            data.forEach(d => {
+                let card = document.createElement("div");
+                card.className = "card";
+                card.draggable = true;
+
+                card.innerHTML = `
+                    <h3 contenteditable="true">${d.title}</h3>
+                    <textarea>${d.text}</textarea>
+                    <input type="file" accept="image/*" onchange="addImage(event, this)">
+                    <div class="images"></div>
+                `;
+
+                let imgContainer = card.querySelector(".images");
+                d.images.forEach(src => {
+                    let img = document.createElement("img");
+                    img.src = src;
+                    imgContainer.appendChild(img);
+                });
+
+                addDragEvents(card);
+                board.appendChild(card);
+            });
+        };
+
+        reader.readAsText(file);
+    };
+
+    input.click();
+}
+
+function exportImage() {
+    html2canvas(document.body).then(canvas => {
+        let a = document.createElement("a");
+        a.download = "moodboard.png";
+        a.href = canvas.toDataURL();
+        a.click();
+    });
+}
+
+function changeBG(color) {
+    document.body.style.background = color;
+}
+
+// Drag & Drop
+let dragged;
+
+function addDragEvents(el) {
+    el.addEventListener("dragstart", e => {
+        dragged = el;
+    });
+
+    el.addEventListener("dragover", e => e.preventDefault());
+
+    el.addEventListener("drop", e => {
+        e.preventDefault();
+        if (dragged !== el) {
+            board.insertBefore(dragged, el);
+        }
+    });
+}
+
+// Inicial
+["Concepto", "Visual", "Educación", "Mecánicas", "Narrativa", "Referentes"].forEach(t => addCard(t));
+</script>
+
+<!-- Librería export -->
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+
+</body>
+</html>
